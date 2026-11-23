@@ -1,0 +1,29 @@
+{
+  "name": "finance-ontology-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "企业财务 Ontology Agent MVP：Next.js 前端 + FastAPI 后端 + SQLite",
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"pnpm dev:backend\" \"pnpm dev:frontend\"",
+    "dev:backend": "uv run --directory backend uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:frontend": "pnpm --dir frontend dev",
+    "build": "pnpm --dir frontend build && uv run --directory backend python -m compileall -q app scripts",
+    "db:seed": "uv run --directory backend python scripts/seed.py",
+    "setup": "pnpm install && cd backend && uv sync",
+    "health": "curl -fsS \"${BACKEND_URL:-http://127.0.0.1:8000}/api/health\"",
+    "clean": "rm -rf frontend/.next backend/.venv data/finance.db data/finance.db-wal data/finance.db-shm"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "sharp"
+    ]
+  }
+}

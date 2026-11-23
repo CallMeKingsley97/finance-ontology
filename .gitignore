@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+*.tsbuildinfo
+
+# python
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+backend/.coverage
+
+# database
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# uploaded source files / local encryption key
+data/uploads/
+data/.source_key
+
+# env
+.env
+.env.local
+.env.*.local
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+
+# logs
+*.log
