@@ -13,6 +13,7 @@ A minimal end-to-end loop built with a **Next.js + React + TypeScript + Tailwind
 | Data sources | Local SQLite; connection test, one-click seeding/reset, row counts and reconciliation summary |
 | Metadata | Tables/columns/types/primary and foreign keys/indexes/samples for 10 business tables; sensitive-column badges and masked samples |
 | Ontology | Rule-based generation of 27 terms, 16 relations and 20 SQL attributes; search, edit, certification and change log |
+| Ontology service binding | Bind a deployed auto-ontology service from `/ontology`: encrypted token, enable switch, connection test and status card; local rule-based ontology stays unaffected |
 | Query | Chinese period/metric/dimension parsing, 14 intent types, parameterized SQL, read-only guard, result masking, query audit |
 | Reports | Financial position analysis and profit & loss analysis; KPI/table/chart/text/appendix; reconciliation checks; browser printing |
 | Security | Three roles: admin/analyst/viewer; graded masking of phone numbers and bank accounts; audit log |
@@ -39,7 +40,7 @@ flowchart LR
 finance-ontology-mvp/
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # 19 HTTP routes
+│   │   ├── api/          # 23 HTTP routes
 │   │   ├── core/         # config (DB path, LLM, roles)
 │   │   ├── db/           # SQLite connections, read-only guard, query helpers
 │   │   ├── schemas/      # Pydantic request/response models
@@ -184,6 +185,9 @@ LLM_TIMEOUT_SECONDS=15
 | `OPENAI_API_KEY` | empty | API key (do not commit) |
 | `OPENAI_MODEL` | empty | Model name |
 | `LLM_TIMEOUT_SECONDS` | `15` | LLM timeout in seconds |
+| `AUTO_ONTOLOGY_ALLOWED_HOSTS` | empty | Optional comma-separated host allowlist for the external ontology service; metadata/link-local addresses are always blocked |
+| `AUTO_ONTOLOGY_MAX_TIMEOUT_SECONDS` | `5` | Upper bound for probe timeouts; values above it are rejected rather than truncated |
+| `AUTO_ONTOLOGY_MAX_RESPONSE_BYTES` | `65536` | Probe response read cap; exceeding it only sets `truncated=true` |
 
 ## 10. FAQ
 
@@ -206,7 +210,9 @@ LLM_TIMEOUT_SECONDS=15
 
 ## 12. API Documentation
 
-The request/response, error codes, and complete QueryAnswer and ReportDocument structures for the 19 endpoints are documented in `artifacts/finance-ontology-agent-mvp/03-code/api-docs.md`. During development you can also open <http://127.0.0.1:8000/docs> (FastAPI auto-generated docs).
+The request/response, error codes, and complete QueryAnswer and ReportDocument structures for the 23 endpoints are documented in `artifacts/finance-ontology-agent-mvp/03-code/api-docs.md`. During development you can also open <http://127.0.0.1:8000/docs> (FastAPI auto-generated docs).
+
+The external auto-ontology binding endpoints (`GET/PUT/DELETE /api/ontology/service`, `POST /api/ontology/service/test`) are documented in `artifacts/auto-ontology-binding/03-code/api-docs.md`. Binding configuration lives in `data/sources.db`; the token is Fernet-encrypted and never returned by any endpoint (only `has_token`). When the binding is unconfigured, disabled or unreachable, local ontology generation and querying behave exactly as before.
 
 ## 13. Local Debugging
 

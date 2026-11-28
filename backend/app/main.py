@@ -14,9 +14,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
 from app.api import (
+    auto_ontology,
     catalog,
     dashboard,
     health,
+    knowledge,
     metadata,
     metrics,
     ontology,
@@ -108,6 +110,16 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:  # noqa: BLE001 - 质量规则失败不阻断启动
         logger.exception("quality rule seed failed")
 
+    try:
+        from app.services.knowledge import loader as knowledge_loader
+        from app.services.knowledge import store as knowledge_store
+
+        knowledge_store.init_knowledge()
+        result = knowledge_loader.load_knowledge_packs()
+        logger.info("knowledge pack load: %s", result)
+    except Exception:  # noqa: BLE001 - 知识包失败不阻断启动
+        logger.exception("knowledge pack load failed; consumers fall back to built-in constants")
+
     yield
 
 
@@ -125,9 +137,11 @@ def create_app() -> FastAPI:
         sources.router,
         metadata.router,
         ontology.router,
+        auto_ontology.router,
         query.router,
         reports.router,
         metrics.router,
+        knowledge.router,
         quality.router,
         report_packages.router,
         security.router,
@@ -149,12 +163,17 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        # 只返回 type/loc/msg，绝不回显 input/ctx/url，避免令牌等敏感输入出现在 422 响应中。
+        errors = [
+            {key: error.get(key) for key in ("type", "loc", "msg") if key in error}
+            for error in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
             content={
                 "code": "VALIDATION_FAILED",
                 "message": "请求参数校验失败",
-                "details": {"errors": jsonable_encoder(exc.errors())},
+                "details": {"errors": jsonable_encoder(errors)},
             },
         )
 

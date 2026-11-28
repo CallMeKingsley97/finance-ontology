@@ -44,11 +44,25 @@ export interface ReconciliationCheck {
   right: number;
   diff: number;
   passed: boolean;
+  /** 仅知识勾稽规则携带。 */
+  tolerance?: number;
+  /** 仅知识勾稽规则携带。 */
+  basis?: string;
+  /** 仅知识勾稽规则携带。 */
+  source_id?: string;
+  /** 仅知识勾稽规则携带。 */
+  source_name?: string;
 }
 
 export interface Reconciliation {
   passed: boolean;
   checks: ReconciliationCheck[];
+  /** 本次执行的知识规则条数（知识不可用时为 0）。 */
+  knowledge_checks?: number;
+  /** 被跳过的知识规则数（SQL 校验失败或取数为空）。 */
+  skipped?: number;
+  /** 跳过规则的可读原因，可直接展示。 */
+  knowledge_warnings?: string[];
 }
 
 export interface DashboardSummary {
@@ -272,6 +286,10 @@ export interface Provenance {
   metric_version?: string | null;
   alias_matched?: string | null;
   alias_type?: string | null;
+  /** 本次回答引用的知识条目 id；无知识关联时为 []。 */
+  knowledge_entry_ids?: string[];
+  /** 知识包版本（如 "2026.11.1"）；知识不可用时为 null。 */
+  knowledge_version?: string | null;
 }
 
 export interface QueryMetricCard {
@@ -284,6 +302,11 @@ export interface QueryMetricCard {
   version: string | null;
   certified_by?: string | null;
   certified_at?: string | null;
+  /** 知识包提供的准则/管理依据（旧响应可能缺失）。 */
+  basis?: string;
+  source_ref?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
 }
 
 export interface QueryCandidate {
@@ -321,6 +344,8 @@ export interface ReportSectionData {
   metrics?: ReportMetric[];
   assumptions?: string[];
   ontology_version?: string;
+  knowledge_sources?: KnowledgeSource[];
+  knowledge_version?: string | null;
 }
 
 export interface ReportMetric {
@@ -328,6 +353,13 @@ export interface ReportMetric {
   name: string;
   formula: string;
   sql: string;
+  /** 知识包提供的依据与来源（旧响应可能缺失）。 */
+  basis?: string;
+  source_ref?: string | null;
+  source_name?: string | null;
+  definition?: string;
+  formula_text?: string;
+  boundary?: Record<string, string>;
 }
 
 export interface ReportTableColumn {
@@ -361,6 +393,8 @@ export interface ReportAppendix {
   metrics: ReportMetric[];
   assumptions: string[];
   ontology_version?: string;
+  knowledge_sources?: KnowledgeSource[];
+  knowledge_version?: string | null;
 }
 
 export interface ReportDocument {
@@ -700,6 +734,12 @@ export interface MetricDefinition {
   test_total?: number;
   test_passed?: number;
   test_pass_rate?: number | null;
+  /** 知识包提供的准则/管理依据（旧响应可能缺失）。 */
+  basis?: string;
+  source_ref?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  knowledge_version?: string | null;
 }
 
 export interface MetricVersion {
@@ -993,3 +1033,174 @@ export interface ReportPackageRequestBody {
   templates?: string[];
   comparison?: "yoy" | "mom" | "none";
 }
+
+// ===== 外部 auto-ontology 绑定 =====
+export interface AutoOntologyServiceState {
+  configured: boolean;
+  enabled: boolean;
+  status: "unconfigured" | "disabled" | "healthy" | "error";
+  base_url: string | null;
+  auth_type: "bearer";
+  auth_header: string;
+  probe_path: string;
+  verify_tls: boolean;
+  timeout_seconds: number;
+  has_token: boolean;
+  last_tested_at: string | null;
+  last_error: string | null;
+  last_latency_ms: number | null;
+  last_status_code: number | null;
+  updated_at: string | null;
+}
+
+export interface AutoOntologyServiceBody {
+  base_url: string;
+  auth_header: string;
+  token?: string;
+  clear_token?: boolean;
+  enabled: boolean;
+  verify_tls: boolean;
+  probe_path: string;
+  timeout_seconds: number;
+}
+
+export interface AutoOntologyTestBody {
+  base_url?: string;
+  auth_header?: string;
+  token?: string;
+  probe_path?: string;
+  verify_tls?: boolean;
+  timeout_seconds?: number;
+}
+
+export interface AutoOntologyTestSummary {
+  content_type: string;
+  bytes_read: number;
+  truncated: boolean;
+  json_type: "object" | "array" | "other";
+  item_count: number | null;
+}
+
+export interface AutoOntologyTestResult {
+  success: boolean;
+  latency_ms: number;
+  status_code: number;
+  persisted: boolean;
+  message: string;
+  summary: AutoOntologyTestSummary;
+}
+
+// ===== 行业知识包（knowledge pack） =====
+export type KnowledgeKind =
+  | "term"
+  | "process"
+  | "metric_basis"
+  | "reconciliation_rule"
+  | "terminology"
+  | "correction";
+
+export type KnowledgeConfidence = "standard" | "opensource" | "practice";
+
+export type KnowledgeSourceType = "standard" | "opensource" | "practice";
+
+export type KnowledgeDomain =
+  | "accounting_reconciliation"
+  | "business_finance_integration";
+
+export interface KnowledgeDomainCount {
+  domain: string;
+  entries: number;
+}
+
+export interface KnowledgeKindCount {
+  kind: string;
+  entries: number;
+}
+
+export interface KnowledgeCoverage {
+  ontology_terms_covered: number;
+  metrics_covered: number;
+  reconciliation_rules: number;
+  terminology_phrases: number;
+}
+
+export interface KnowledgeSummary {
+  available: boolean;
+  pack_version: string;
+  entries: number;
+  sources: number;
+  loaded_at: string | null;
+  last_error: string | null;
+  domains: KnowledgeDomainCount[];
+  kinds: KnowledgeKindCount[];
+  coverage: KnowledgeCoverage;
+}
+
+export interface KnowledgeSource {
+  source_id: string;
+  name: string;
+  type: KnowledgeSourceType | string;
+  license: string;
+  url: string;
+  notice: string;
+  version: string;
+  entry_count: number;
+}
+
+export interface KnowledgeEntry {
+  entry_id: string;
+  kind: KnowledgeKind | string;
+  domain: KnowledgeDomain | string;
+  title: string;
+  statement: string;
+  basis: string;
+  source_id: string;
+  source_name: string;
+  source_type: KnowledgeSourceType | string;
+  version: string;
+  effective_from: string;
+  confidence: KnowledgeConfidence | string;
+}
+
+export interface KnowledgeLink {
+  target_kind: string;
+  target_code: string;
+}
+
+export interface KnowledgeEntryDetail extends KnowledgeEntry {
+  payload: Record<string, unknown>;
+  links: KnowledgeLink[];
+  source: KnowledgeSource;
+}
+
+export interface KnowledgeListResponse {
+  items: KnowledgeEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface KnowledgeSourcesResponse {
+  items: KnowledgeSource[];
+}
+
+export interface KnowledgeReloadResponse {
+  reloaded: boolean;
+  pack_version: string;
+  entries: number;
+  sources: number;
+  /** 领域数（整数），不是领域分布数组。 */
+  domains: number;
+  /** 本次加载回收的孤儿条目数（JSON 中已删除的条目）。 */
+  removed?: number;
+  duration_ms: number;
+  loaded_at: string | null;
+}
+
+export interface KnowledgeViolation {
+  file: string;
+  entry_id: string;
+  field: string;
+  message: string;
+}
+

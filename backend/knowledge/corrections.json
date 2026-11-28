@@ -1,0 +1,107 @@
+{
+  "pack": "corrections",
+  "pack_version": "2026.11.1",
+  "domain": "accounting_reconciliation",
+  "entries": [
+    {
+      "id": "corr.account_1002",
+      "kind": "correction",
+      "domain": "accounting_reconciliation",
+      "title": "修正银行存款与库存现金的父子关系",
+      "statement": "科目 1002 银行存款与 1001 库存现金修正前被错误建模为父子关系，二者实为同级科目，修正后父科目为空。",
+      "basis": "《企业会计准则——应用指南》会计科目表同级科目：1001 库存现金与 1002 银行存款均为一级科目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "account_code": "1002",
+        "old_parent_code": "1001",
+        "new_parent_code": null
+      },
+      "links": [
+        {"target_kind": "account", "target_code": "1002"}
+      ]
+    },
+    {
+      "id": "corr.account_1123",
+      "kind": "correction",
+      "domain": "accounting_reconciliation",
+      "title": "修正预付账款与应收账款的父子关系",
+      "statement": "科目 1123 预付账款与 1122 应收账款修正前被错误建模为父子关系，二者实为同级科目，修正后父科目为空。",
+      "basis": "《企业会计准则——应用指南》会计科目表同级科目：1122 应收账款与 1123 预付账款均为一级科目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "account_code": "1123",
+        "old_parent_code": "1122",
+        "new_parent_code": null
+      },
+      "links": [
+        {"target_kind": "account", "target_code": "1123"}
+      ]
+    },
+    {
+      "id": "corr.account_2203",
+      "kind": "correction",
+      "domain": "accounting_reconciliation",
+      "title": "修正预收账款与应付账款的父子关系",
+      "statement": "科目 2203 预收账款与 2202 应付账款修正前被错误建模为父子关系，二者实为同级科目，修正后父科目为空。",
+      "basis": "《企业会计准则——应用指南》会计科目表同级科目：2202 应付账款与 2203 预收账款均为一级科目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "account_code": "2203",
+        "old_parent_code": "2202",
+        "new_parent_code": null
+      },
+      "links": [
+        {"target_kind": "account", "target_code": "2203"}
+      ]
+    },
+    {
+      "id": "corr.account_6402",
+      "kind": "correction",
+      "domain": "accounting_reconciliation",
+      "title": "修正其他业务成本与主营业务成本的父子关系",
+      "statement": "科目 6402 其他业务成本与 6401 主营业务成本修正前被错误建模为父子关系，二者实为同级科目，修正后父科目为空。",
+      "basis": "《企业会计准则——应用指南》会计科目表同级科目：6401 主营业务成本与 6402 其他业务成本均为一级科目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "account_code": "6402",
+        "old_parent_code": "6401",
+        "new_parent_code": null
+      },
+      "links": [
+        {"target_kind": "account", "target_code": "6402"}
+      ]
+    },
+    {
+      "id": "corr.account_6051",
+      "kind": "correction",
+      "domain": "accounting_reconciliation",
+      "title": "修正其他业务收入与主营业务收入的父子关系",
+      "statement": "科目 6051 其他业务收入与 6001 主营业务收入修正前被错误建模为父子关系，二者实为同级科目，修正后父科目为空。",
+      "basis": "《企业会计准则——应用指南》会计科目表同级科目：6001 主营业务收入与 6051 其他业务收入均为一级科目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "account_code": "6051",
+        "old_parent_code": "6001",
+        "new_parent_code": null
+      },
+      "links": [
+        {"target_kind": "account", "target_code": "6051"}
+      ]
+    }
+  ]
+}

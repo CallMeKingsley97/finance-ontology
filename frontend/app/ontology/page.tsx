@@ -3,6 +3,7 @@
 import { BadgeCheck, Pencil, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import AutoOntologyCard from "@/components/AutoOntologyCard";
 import DataTable from "@/components/DataTable";
 import EmptyState from "@/components/EmptyState";
 import ErrorAlert from "@/components/ErrorAlert";
@@ -310,6 +311,8 @@ export default function OntologyPage() {
           {terms.length > 0 ? "重新生成本体" : "生成本体"}
         </button>
       </div>
+
+      <AutoOntologyCard role={role} />
 
       {!isAdmin ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">

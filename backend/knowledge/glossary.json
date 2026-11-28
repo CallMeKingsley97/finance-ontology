@@ -1,0 +1,279 @@
+{
+  "pack": "glossary",
+  "pack_version": "2026.11.1",
+  "domain": "accounting_reconciliation",
+  "entries": [
+    {
+      "id": "glossary.equity_equation",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "会计恒等式",
+      "statement": "资产总额等于负债总额加所有者权益总额；任何一笔经济业务发生后，该等式仍然成立。",
+      "basis": "复式记账法（有借必有贷、借贷必相等）与资产负债表平衡关系，行业通识。",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "description": "会计恒等式是资产负债表的平衡基础：资产来源于债权人提供的负债与所有者投入及留存收益，是复式记账和报表勾稽的起点。"
+      }
+    },
+    {
+      "id": "glossary.double_entry",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "借贷记账法",
+      "statement": "借贷记账法以“有借必有贷、借贷必相等”为记账规则，每笔经济业务至少在两个相互联系的账户中登记，借方合计等于贷方合计。",
+      "basis": "复式记账法行业通识（1494 年复式簿记体系），有借必有贷、借贷必相等。",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "description": "借贷记账法用借方和贷方两个方向记录资金运动，通过账户对应关系完整反映经济业务的来龙去脉。"
+      }
+    },
+    {
+      "id": "glossary.accrual_basis",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "权责发生制",
+      "statement": "权责发生制以权利和责任的发生为确认基础：凡属本期的收入与费用，不论款项是否已经收付，均计入本期。",
+      "basis": "《企业会计准则——基本准则》第九条关于以权责发生制为基础进行会计确认、计量和报告的规定（仅引用条款号）。",
+      "source_id": "cas-basic",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "权责发生制是会计确认、计量和报告的基础，收入在履约义务完成时确认，费用在受益期间确认，而非按现金收付时点确认。"
+      }
+    },
+    {
+      "id": "glossary.cash_basis",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "收付实现制",
+      "statement": "收付实现制以款项实际收付为确认基础：收到款项时确认收入，支付款项时确认费用。",
+      "basis": "《企业会计准则——基本准则》第九条确立企业会计采用权责发生制基础（仅引用条款号）；收付实现制为预算会计与行业通识口径。",
+      "source_id": "cas-basic",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "收付实现制按现金实际收付时点确认收支，口径直观但可能与业务归属期间错位，常用于预算执行与现金流分析。"
+      }
+    },
+    {
+      "id": "glossary.trial_balance",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "试算平衡",
+      "statement": "将全部账户的借方发生额合计与贷方发生额合计对比，二者相等则试算平衡；不相等说明记账存在错误。",
+      "basis": "复式记账法（有借必有贷、借贷必相等）的平衡校验，行业通识。",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "description": "试算平衡是记账后的第一道校验：发生额平衡检查借贷总额，余额平衡检查资产与负债权益的对应关系。"
+      }
+    },
+    {
+      "id": "glossary.current_assets",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "流动资产",
+      "statement": "流动资产是预计在一个正常营业周期内变现、出售或耗用的资产，包括货币资金、应收款项、存货等。",
+      "basis": "《企业会计准则——应用指南》会计科目表资产类科目与资产负债表流动资产项目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "流动资产按流动性归类，是流动比率等短期偿债能力指标的计算基础，通常包括 1001、1002、1122、1123、1405 等科目。"
+      }
+    },
+    {
+      "id": "glossary.current_liabilities",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "流动负债",
+      "statement": "流动负债是预计在一个正常营业周期内清偿的负债，包括短期借款、应付账款、预收款项等。",
+      "basis": "《企业会计准则——应用指南》会计科目表负债类科目与资产负债表流动负债项目（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "流动负债按偿还期限归类，与流动资产共同构成流动比率，是衡量短期偿债压力的核心口径。"
+      }
+    },
+    {
+      "id": "glossary.account_system",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "会计科目体系",
+      "statement": "会计科目体系按资产、负债、共同、所有者权益、成本、损益六大类对会计要素作进一步分类，是设置账户、填制凭证与编制报表的基础。",
+      "basis": "《企业会计准则——应用指南》附录会计科目表（仅引用科目类别与条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "term_code": "term_account",
+        "synonyms": ["科目体系", "总账科目"],
+        "description": "会计科目体系以科目代码分层组织，一级科目对应报表项目，明细科目支撑核算与取数，是业务数据映射到财务报表的字典。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_account"}
+      ]
+    },
+    {
+      "id": "glossary.voucher_entry",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "凭证与分录",
+      "statement": "记账凭证按经济业务编制会计分录，每笔分录至少包含一个借方科目和一个贷方科目，且借贷金额相等。",
+      "basis": "复式记账法（有借必有贷、借贷必相等）与《企业会计准则——应用指南》记账凭证核算形式（仅引用条款号）。",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "term_code": "term_journal",
+        "synonyms": ["复式分录", "凭证行"],
+        "description": "凭证是记账依据，分录是凭证的最小记录单元；凭证经审核后过账至科目余额，形成财务报表的数据链路。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_journal"}
+      ]
+    },
+    {
+      "id": "glossary.balance_period",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "期初与期末余额",
+      "statement": "期初余额是上期期末结转至本期的余额；期末余额等于期初余额加本期增加发生额减本期减少发生额，按账户借贷方向计算。",
+      "basis": "《企业会计准则——应用指南》会计科目表与科目余额表勾稽关系（仅引用条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "term_code": "term_balance",
+        "synonyms": ["期初余额", "期初期末"],
+        "description": "期初余额由上期期末结转，期末余额按期初余额与本期的借贷发生额计算，是资产负债表与利润表取数的直接来源。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_balance"}
+      ]
+    },
+    {
+      "id": "glossary.procure_to_pay",
+      "kind": "process",
+      "domain": "business_finance_integration",
+      "title": "采购到付款",
+      "statement": "采购到付款是从采购申请、订单、收货、采购发票到供应商付款的端到端流程，各环节分别形成存货、应付账款与付款记录。",
+      "basis": "Odoo/ERPNext/GnuCash 采购与应付模块的流程模型概念参考（仅借鉴模型思想，不复制源代码）。",
+      "source_id": "odoo-erpnext-gnucash",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "term_code": "term_payment",
+        "relation_code": "rel_payment_vendor",
+        "synonyms": ["资金收付", "货款支付"],
+        "description": "采购到付款流程串联采购订单、收货、发票校验与付款，形成应付账款与存货的业财一体化闭环，是供应商账期管理的核心链路。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_payment"}
+      ]
+    },
+    {
+      "id": "glossary.order_to_cash",
+      "kind": "process",
+      "domain": "business_finance_integration",
+      "title": "销售到收款",
+      "statement": "销售到收款是从销售订单、发货、销售发票到客户回款的端到端流程，各环节分别形成应收账款、收入与收款记录。",
+      "basis": "Odoo/ERPNext/GnuCash 销售与应收模块的流程模型概念参考（仅借鉴模型思想，不复制源代码）。",
+      "source_id": "odoo-erpnext-gnucash",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "term_code": "term_invoice",
+        "relation_code": "rel_payment_customer",
+        "synonyms": ["增值税发票", "商业票据"],
+        "description": "销售到收款流程串联订单、发货、开票与回款，形成应收账款周转与收入确认的业财闭环，是客户信用与回款管理的核心链路。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_invoice"}
+      ]
+    },
+    {
+      "id": "glossary.inventory_valuation",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "存货计价",
+      "statement": "存货计价确定存货的入账成本与发出成本，常用方法包括先进先出法、加权平均法与个别计价法。",
+      "basis": "《企业会计准则第1号——存货》与《企业会计准则——应用指南》会计科目表 1405 存货（仅引用准则名称与条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "存货计价方法影响营业成本与期末存货金额，同一企业一经选用应保持一致，变更需披露。"
+      }
+    },
+    {
+      "id": "glossary.revenue_recognition",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "收入确认",
+      "statement": "收入在企业履行履约义务、客户取得相关商品或服务控制权时确认，并按分摊至该履约义务的交易价格计量。",
+      "basis": "《企业会计准则——基本准则》关于收入要素确认条件的规定（仅引用条款号），结合《企业会计准则第14号——收入》的确认与计量原则（仅引用准则名称）。",
+      "source_id": "cas-basic",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "收入确认以控制权转移为核心判断，按五步法模型识别合同、履约义务并分摊交易价格，是营业收入指标的口径依据。"
+      }
+    },
+    {
+      "id": "glossary.depreciation",
+      "kind": "term",
+      "domain": "accounting_reconciliation",
+      "title": "折旧",
+      "statement": "折旧在固定资产使用寿命内，按确定的方法对应计折旧额进行系统分摊，常用方法包括年限平均法、工作量法与双倍余额递减法。",
+      "basis": "《企业会计准则第4号——固定资产》与《企业会计准则——应用指南》会计科目表累计折旧（仅引用准则名称与条款号）。",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2007-01",
+      "confidence": "standard",
+      "payload": {
+        "description": "折旧把固定资产成本在其受益期间内分摊为费用，累计折旧作为固定资产的备抵科目反映已计提金额。"
+      }
+    },
+    {
+      "id": "glossary.budget_management",
+      "kind": "process",
+      "domain": "business_finance_integration",
+      "title": "预算管理",
+      "statement": "预算管理以预算编制、审批、执行、控制与考核为闭环，按期间、科目、部门与版本管理预算数，并与实际发生额对比分析差异。",
+      "basis": "Cube 指标口径 schema 的 measure 与 segment 建模思想（Apache-2.0，改写引用）；全面预算管理为行业通识。",
+      "source_id": "cube",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "opensource",
+      "payload": {
+        "term_code": "term_budget",
+        "synonyms": ["预算编制", "预算版本"],
+        "description": "预算管理以版本化的预算数为基础，通过预算差异与预算达成率指标驱动经营分析、资源调配与绩效考核。"
+      },
+      "links": [
+        {"target_kind": "term", "target_code": "term_budget"}
+      ]
+    }
+  ]
+}

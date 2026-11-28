@@ -33,6 +33,8 @@ class Provenance(BaseModel):
     metric_codes: list[str] = Field(default_factory=list)
     ontology_version: str
     elapsed_ms: int
+    knowledge_entry_ids: list[str] = Field(default_factory=list)
+    knowledge_version: str | None = None
 
 
 class AskRequest(BaseModel):

@@ -388,8 +388,38 @@ def _detect_keyword_metric_intent(normalized: str) -> str | None:
     return None
 
 
+def _knowledge_terminology_hit(normalized: str) -> Any | None:
+    """知识包行业术语命中；知识不可用或任何异常均视为未命中。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        return knowledge_service.detect_terminology(normalized)
+    except Exception:  # noqa: BLE001 - 知识层故障不能影响既有意图识别
+        return None
+
+
+def _knowledge_pack_version() -> str | None:
+    """知识包版本；知识不可用时返回 None。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        version = getattr(knowledge_service.get_snapshot(), "pack_version", None)
+        return str(version) if version else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _provenance_knowledge_fields(entry_ids: list[str] | None = None) -> dict[str, Any]:
+    """所有问数回答统一携带的知识溯源两键（api-docs §3.3 / tech-design §9.6）。"""
+    cleaned = [str(item) for item in (entry_ids or []) if item]
+    return {
+        "knowledge_entry_ids": cleaned,
+        "knowledge_version": _knowledge_pack_version(),
+    }
+
+
 def detect_intent_with_resolution(question: str) -> tuple[str, Any | None]:
-    """别名优先的意图识别：特殊意图 → 别名 → 关键词 → 本体 → 客户/供应商。"""
+    """别名优先的意图识别：特殊意图 → 别名 → 关键词 → 知识术语 → 本体 → 客户/供应商。"""
     from app.services import alias_resolver
 
     normalized = _normalize(question)
@@ -407,6 +437,22 @@ def detect_intent_with_resolution(question: str) -> tuple[str, Any | None]:
     keyword = _detect_keyword_metric_intent(normalized)
     if keyword:
         return keyword, None
+    hit = _knowledge_terminology_hit(normalized)
+    if hit is not None:
+        if getattr(hit, "target_kind", None) == "concept":
+            return "knowledge_lookup", hit
+        if getattr(hit, "target_kind", None) == "metric" and getattr(hit, "metric_code", None):
+            from app.services.alias_resolver import AliasResolution
+
+            return (
+                METRIC_INTENT_MAP.get(hit.metric_code) or "metric_lookup",
+                AliasResolution(
+                    kind="matched",
+                    metric_code=hit.metric_code,
+                    alias=hit.matched_phrase,
+                    alias_type="business",
+                ),
+            )
     term = _find_term_by_alias(question)
     if term:
         if term["term_code"] in METRIC_INTENT_MAP:
@@ -443,7 +489,7 @@ def guard_sql(
     """只读守卫：单条 SELECT、表白名单、禁 DDL/DML、禁 SELECT *、强制 LIMIT。
 
     allowed_tables 为空时沿用业务表 10 张白名单；质量规则查询 staging 时传入
-    staging 白名单。allow_sensitive=False 用于 LLM/指标公式：禁止引用
+    staging 白名单。allow_sensitive=False 用于 LLM/指标公式/知识规则：禁止引用
     phone/bank_account 等敏感列，避免通过列别名或函数包裹绕过结果脱敏。
     """
     table_whitelist = ALLOWED_TABLES if allowed_tables is None else allowed_tables
@@ -473,7 +519,7 @@ def guard_sql(
         for name in sorted(SENSITIVE_COLUMN_NAMES):
             pattern = rf"""(?<![\w])["`\[]?{re.escape(name)}["`\]]?(?![\w])"""
             if re.search(pattern, body, re.I):
-                return GuardResult(False, "", f"LLM 路径禁止引用敏感列: {name}")
+                return GuardResult(False, "", f"禁止引用敏感列: {name}")
     cte_names = _cte_names(body)
     table_pattern = re.compile(
         r"""\b(?:FROM|JOIN)\s+(?:"([A-Za-z_][A-Za-z0-9_]*)"|\[([A-Za-z_][A-Za-z0-9_]*)\]|`([A-Za-z_][A-Za-z0-9_]*)`|([A-Za-z_][A-Za-z0-9_]*))""",
@@ -857,6 +903,9 @@ def _apply_resolution_provenance(answer: dict[str, Any], resolution: Any | None)
         and not provenance.get("metric_codes")
     ):
         provenance["metric_codes"] = [resolution.metric_code]
+    # LLM 路径同样补齐知识溯源两键，保证所有意图的 provenance 结构一致。
+    for key, value in _provenance_knowledge_fields().items():
+        provenance.setdefault(key, value)
     return answer
 
 
@@ -1035,11 +1084,92 @@ def build_answer(
             "ontology_version": ONTOLOGY_VERSION,
             "elapsed_ms": elapsed_ms,
             **_resolution_provenance(resolution),
+            **_provenance_knowledge_fields(
+                [_metric_knowledge_basis(code).get("entry_id") for code in metric_codes]
+            ),
         },
         "masked_columns": masked_columns,
         "warnings": warnings,
         "suggestions": [],
     }
+
+
+def _metric_knowledge_basis(metric_code: str) -> dict[str, Any]:
+    """指标口径依据；未命中或知识不可用时返回空 dict。"""
+    if not metric_code:
+        return {}
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        found = knowledge_service.metric_basis(metric_code) or {}
+    except Exception:  # noqa: BLE001 - 知识层故障不得影响定义回答
+        return {}
+    return found if isinstance(found, dict) else {}
+
+
+def _term_knowledge_enrichment(term_code: str) -> dict[str, Any]:
+    """本体术语的知识增强（依据/来源）；未命中或异常时返回空 dict。"""
+    if not term_code:
+        return {}
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        enrichment = knowledge_service.term_enrichment(term_code)
+    except Exception:  # noqa: BLE001
+        return {}
+    return enrichment if isinstance(enrichment, dict) else {}
+
+
+def _knowledge_definition_hit(question: str) -> dict[str, Any] | None:
+    """知识包术语定义兜底（kind in term/terminology）；不可用或异常时返回 None。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        found = knowledge_service.find_definition_entry(question, _normalize(question))
+    except Exception:  # noqa: BLE001 - 知识层故障不得影响定义回答
+        return None
+    return found if isinstance(found, dict) and found.get("entry_id") else None
+
+
+def _knowledge_answer(question: str, slots: PeriodSlots, hit: Any, elapsed_ms: int) -> dict[str, Any]:
+    """知识条目解答：直接引用知识包陈述，不生成 SQL。"""
+    title = str(getattr(hit, "title", "") or "")
+    statement = str(getattr(hit, "statement", "") or "")
+    entry_id = str(getattr(hit, "entry_id", "") or "")
+    basis = str(getattr(hit, "basis", "") or "")
+    source_name = str(getattr(hit, "source_name", "") or "")
+    answer = f"{title}：{statement}" if title and statement else (title or statement)
+    assumptions: list[str] = []
+    if basis:
+        assumptions.append(f"依据：{basis}")
+    if source_name:
+        assumptions.append(f"来源：{source_name}")
+    assumptions.append("知识条目来自知识包，未查询业务数据")
+    return {
+        "answerable": True,
+        "answer": answer,
+        "intent": "knowledge_lookup",
+        "engine": "rule",
+        "sql": None,
+        "columns": [],
+        "rows": [],
+        "row_count": 0,
+        "chart": {"type": "none", "spec": {"labels": [], "series": []}},
+        "explanation": f"命中知识条目 {entry_id}",
+        "assumptions": assumptions,
+        "provenance": {
+            "period_code": slots.end_code,
+            "comparison_period": None,
+            "metric_codes": [],
+            "ontology_version": ONTOLOGY_VERSION,
+            "elapsed_ms": elapsed_ms,
+            **_provenance_knowledge_fields([entry_id]),
+        },
+        "masked_columns": [],
+        "warnings": [],
+        "suggestions": [],
+    }
+
 
 
 def _definition_answer(
@@ -1059,6 +1189,14 @@ def _definition_answer(
     if metric:
         answer = f"{metric['name']}：{metric['definition']}"
         metric_codes = [metric["code"]]
+        knowledge_basis = _metric_knowledge_basis(metric["code"])
+        basis = knowledge_basis.get("basis") or ""
+        source_name = knowledge_basis.get("source_name") or ""
+        knowledge_entry_id = knowledge_basis.get("entry_id") or ""
+        if basis:
+            answer += f" 依据：{basis}"
+            if source_name:
+                answer += f"；来源：{source_name}"
         metric_card = {
             "code": metric["code"],
             "name": metric["name"],
@@ -1070,30 +1208,65 @@ def _definition_answer(
             "version": metric.get("version"),
             "certified_by": metric.get("certified_by"),
             "certified_at": metric.get("certified_at"),
+            "basis": basis,
+            "source_ref": knowledge_basis.get("source_ref"),
+            "source_name": knowledge_basis.get("source_name"),
+            "source_url": knowledge_basis.get("source_url"),
         }
         provenance_extra = {
             "metric_definition_code": metric["code"],
             "metric_version": metric.get("version"),
             "alias_matched": getattr(resolution, "alias", None),
             "alias_type": getattr(resolution, "alias_type", None),
+            **_provenance_knowledge_fields([knowledge_entry_id]),
         }
         explanation = "命中认证指标定义卡片，展示版本化口径，不查询业务数据。"
     else:
         metric_card = None
         term = _find_term_by_alias(question)
+        term_basis = ""
+        term_source_name = ""
+        term_entry_id = ""
+        knowledge_definition = None
         if term:
             answer = f"{term['display_name']}：{term['description']}"
             metric_codes = [term["term_code"]]
+            enrichment = _term_knowledge_enrichment(term["term_code"])
+            term_basis = enrichment.get("basis") or ""
+            term_source_name = enrichment.get("source_name") or ""
+            term_entry_id = enrichment.get("entry_id") or ""
+            if term_basis:
+                answer += f" 依据：{term_basis}"
+                if term_source_name:
+                    answer += f"；来源：{term_source_name}"
         else:
-            answer = "未在本体术语库中找到该定义，请先在本体页生成或校准术语。"
-            metric_codes = []
+            # 本体术语未命中时，回落到知识包 glossary/terminology 术语定义。
+            knowledge_definition = _knowledge_definition_hit(question)
+            if knowledge_definition:
+                answer = f"{knowledge_definition['title']}：{knowledge_definition['statement']}"
+                metric_codes = []
+                term_basis = knowledge_definition["basis"]
+                term_source_name = knowledge_definition["source_name"]
+                term_entry_id = knowledge_definition["entry_id"]
+                if term_basis:
+                    answer += f" 依据：{term_basis}"
+                    if term_source_name:
+                        answer += f"；来源：{term_source_name}"
+            else:
+                answer = "未在本体术语库中找到该定义，请先在本体页生成或校准术语。"
+                metric_codes = []
         provenance_extra = {
             "metric_definition_code": None,
             "metric_version": None,
             "alias_matched": None,
             "alias_type": None,
+            **_provenance_knowledge_fields([term_entry_id]),
         }
-        explanation = "命中本体术语定义，不查询业务表。"
+        explanation = (
+            f"命中知识包术语定义 {term_entry_id}，不查询业务表。"
+            if knowledge_definition
+            else "命中本体术语定义，不查询业务表。"
+        )
     response = {
         "answerable": True,
         "answer": answer,
@@ -1193,6 +1366,9 @@ def _metric_lookup_answer(
             "metric_version": execution["version"],
             "alias_matched": getattr(resolution, "alias", None),
             "alias_type": getattr(resolution, "alias_type", None),
+            **_provenance_knowledge_fields(
+                [_metric_knowledge_basis(code).get("entry_id")]
+            ),
         },
         "metric_card": metric_card,
         "masked_columns": [],
@@ -1234,6 +1410,7 @@ def _ambiguous_answer(
             "metric_version": None,
             "alias_matched": getattr(resolution, "alias", None),
             "alias_type": getattr(resolution, "alias_type", None),
+            **_provenance_knowledge_fields(),
         },
         "candidates": candidates,
         "masked_columns": [],
@@ -1276,6 +1453,7 @@ def _exclusion_answer(
             "metric_version": None,
             "alias_matched": alias,
             "alias_type": getattr(resolution, "alias_type", None),
+            **_provenance_knowledge_fields(),
         },
         "candidates": list(getattr(resolution, "candidates", []) or []),
         "masked_columns": [],
@@ -1307,6 +1485,7 @@ def _unsupported_answer(question: str, slots: PeriodSlots, elapsed_ms: int) -> d
             "metric_version": None,
             "alias_matched": None,
             "alias_type": None,
+            **_provenance_knowledge_fields(),
         },
         "masked_columns": [],
         "warnings": [],
@@ -1432,6 +1611,7 @@ def _llm_answer(
             "metric_codes": [],
             "ontology_version": ONTOLOGY_VERSION,
             "elapsed_ms": elapsed_ms,
+            **_provenance_knowledge_fields(),
         },
         "masked_columns": masked_columns,
         "warnings": warnings,
@@ -1458,6 +1638,34 @@ def answer_question(question: str, role: str, limit: int = 20) -> dict[str, Any]
         }
     if intent == "top_customers":
         limit = _top_n(question, limit)
+
+    if intent == "knowledge_lookup":
+        elapsed = int((time.perf_counter() - started) * 1000)
+        if resolution is None or not getattr(resolution, "title", None):
+            answer = _unsupported_answer(question, slots, elapsed)
+            record_audit(
+                question=question,
+                intent="unsupported",
+                sql_text=None,
+                row_count=0,
+                status="unanswered",
+                role=role,
+                masked_columns=[],
+                duration_ms=elapsed,
+            )
+            return answer
+        answer = _knowledge_answer(question, slots, resolution, elapsed)
+        record_audit(
+            question=question,
+            intent=intent,
+            sql_text=None,
+            row_count=0,
+            status="succeeded",
+            role=role,
+            masked_columns=[],
+            duration_ms=elapsed,
+        )
+        return answer
 
     if intent == "definition":
         elapsed = int((time.perf_counter() - started) * 1000)

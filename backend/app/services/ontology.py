@@ -522,14 +522,85 @@ def _insert_columns(
     return inserted
 
 
-def _upsert_term(conn: Any, term: dict[str, Any], category: str, now: str) -> int:
+def _knowledge_entry_dict(value: Any) -> dict[str, Any]:
+    """知识条目归一为 dict；不支持的类型返回 {}。"""
+    if isinstance(value, dict):
+        return value
+    try:
+        return dict(value)
+    except (TypeError, ValueError):
+        return {}
+
+
+def _knowledge_entry_payload(entry: dict[str, Any]) -> dict[str, Any]:
+    """读取条目 payload，兼容已解析对象、JSON 文本与 payload_json 列。"""
+    payload = entry.get("payload")
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except (TypeError, ValueError):
+            payload = {}
+    resolved = _knowledge_entry_dict(payload)
+    if resolved:
+        return resolved
+    raw = entry.get("payload_json")
+    if isinstance(raw, str):
+        try:
+            return _knowledge_entry_dict(json.loads(raw))
+        except (TypeError, ValueError):
+            return {}
+    return {}
+
+
+def _knowledge_term_terms() -> dict[str, dict[str, Any]]:
+    """知识包对本体的术语增强；任何异常返回 {}。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        snapshot = knowledge_service.get_snapshot()
+        by_term = _knowledge_entry_dict(getattr(snapshot, "by_term", None))
+        result: dict[str, dict[str, Any]] = {}
+        for term_code, raw_entry in by_term.items():
+            entry = _knowledge_entry_dict(raw_entry)
+            if not term_code or not entry:
+                continue
+            payload = _knowledge_entry_payload(entry)
+            synonyms = payload.get("synonyms")
+            result[str(term_code)] = {
+                "synonyms": [str(item) for item in synonyms] if isinstance(synonyms, list) else [],
+                "description": str(payload.get("description") or ""),
+                "basis": str(entry.get("basis") or ""),
+                "entry_id": str(entry.get("entry_id") or entry.get("id") or ""),
+            }
+        return result
+    except Exception:  # noqa: BLE001 - 知识不可用时必须整体降级
+        return {}
+
+
+def _knowledge_relation_descriptions() -> dict[str, dict[str, Any]]:
+    """知识包对关系描述的增强；异常返回 {}。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        return knowledge_service.relation_enrichments()
+    except Exception:  # noqa: BLE001 - 知识不可用时必须整体降级
+        return {}
+
+
+def _upsert_term(
+    conn: Any,
+    term: dict[str, Any],
+    category: str,
+    now: str,
+    source: str = "rule",
+) -> int:
     certified = 0 if category == "sensitive" else 1
     conn.execute(
         """INSERT INTO ontology_term
            (term_code, name, display_name, description, synonyms, mapped_table,
             mapped_columns, category, certified, certified_by, certified_at, source, updated_at)
            VALUES (:term_code, :name, :display_name, :description, :synonyms, :mapped_table,
-                   :mapped_columns, :category, :certified, :certified_by, :certified_at, 'rule', :updated_at)
+                   :mapped_columns, :category, :certified, :certified_by, :certified_at, :source, :updated_at)
            ON CONFLICT(term_code) DO UPDATE SET
                name = excluded.name,
                display_name = excluded.display_name,
@@ -538,7 +609,7 @@ def _upsert_term(conn: Any, term: dict[str, Any], category: str, now: str) -> in
                mapped_table = excluded.mapped_table,
                mapped_columns = excluded.mapped_columns,
                category = excluded.category,
-               source = 'rule',
+               source = :source,
                updated_at = excluded.updated_at""",
         {
             "term_code": term["term_code"],
@@ -552,6 +623,7 @@ def _upsert_term(conn: Any, term: dict[str, Any], category: str, now: str) -> in
             "certified": certified,
             "certified_by": "system" if certified else None,
             "certified_at": now if certified else None,
+            "source": source,
             "updated_at": now,
         },
     )
@@ -592,6 +664,8 @@ def generate_ontology(force: bool = False) -> dict[str, Any]:
                 )
 
         now = _now()
+        term_terms = _knowledge_term_terms()
+        relation_descriptions = _knowledge_relation_descriptions()
         term_ids: dict[str, int] = {}
         column_count = 0
         for category, terms in (
@@ -605,13 +679,31 @@ def generate_ontology(force: bool = False) -> dict[str, Any]:
                     term_with_columns["mapped_columns"] = _table_columns(conn, term["mapped_table"])
                 elif category == "sensitive":
                     term_with_columns.setdefault("mapped_columns", [])
-                term_id = _upsert_term(conn, term_with_columns, category, now)
+
+                enrichment = term_terms.get(term["term_code"])
+                source = "rule"
+                if enrichment:
+                    base_synonyms = list(term_with_columns.get("synonyms") or [])
+                    merged_synonyms = list(base_synonyms)
+                    for synonym in enrichment.get("synonyms") or []:
+                        if synonym and synonym not in merged_synonyms:
+                            merged_synonyms.append(synonym)
+                    term_with_columns["synonyms"] = merged_synonyms
+                    if not term_with_columns.get("description") and enrichment.get("description"):
+                        term_with_columns["description"] = enrichment["description"]
+                    source = "knowledge"
+
+                term_id = _upsert_term(conn, term_with_columns, category, now, source=source)
                 term_ids[term_with_columns["term_code"]] = term_id
                 column_count += _insert_columns(conn, term_id, term_with_columns)
 
         for relation in RELATIONS:
             if relation["from_term"] not in term_ids or relation["to_term"] not in term_ids:
                 continue
+            relation_row = dict(relation)
+            enrichment = relation_descriptions.get(relation["relation_code"])
+            if enrichment and not relation_row.get("description"):
+                relation_row["description"] = enrichment["description"]
             conn.execute(
                 """INSERT INTO ontology_relation
                    (relation_code, from_term, to_term, relation_type, cardinality, join_hint, description)
@@ -623,7 +715,7 @@ def generate_ontology(force: bool = False) -> dict[str, Any]:
                        cardinality = excluded.cardinality,
                        join_hint = excluded.join_hint,
                        description = excluded.description""",
-                relation,
+                relation_row,
             )
 
         for attr in SQL_ATTRIBUTES:

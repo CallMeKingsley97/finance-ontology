@@ -46,7 +46,12 @@ def test_generate_package_with_three_templates(client) -> None:
     assert package["quality"]["rules_passed"] == 10
     assert len(package["quality"]["results"]) == 10
     assert package["reconciliation"]["passed"] is True
-    assert len(package["reconciliation"]["checks"]) == 5
+    # TASK-04 契约同步：5 条硬编码 + 知识包规则。
+    assert len(package["reconciliation"]["checks"]) >= 8
+    assert (
+        len(package["reconciliation"]["checks"])
+        == 5 + package["reconciliation"]["knowledge_checks"]
+    )
     assert package["appendix"]["metrics"]
     assert package["appendix"]["assumptions"]
 
@@ -130,7 +135,8 @@ def test_legacy_reports_contract_unchanged(client) -> None:
         )
     )
     assert len(report["sections"]) == 8
-    assert len(report["reconciliation"]["checks"]) == 5
+    # TASK-04 契约同步：旧报告接口同样追加知识勾稽规则。
+    assert len(report["reconciliation"]["checks"]) >= 8
     assert report["reconciliation"]["passed"] is True
     assert "quality" not in report
     assert {"template_code", "title", "period", "sections", "reconciliation", "warnings"} <= set(

@@ -73,6 +73,31 @@ def _boundary(row: dict[str, Any] | sqlite3.Row) -> dict[str, str]:
     return {str(key): str(value) for key, value in raw.items()}
 
 
+def _knowledge_basis_fields(code: str) -> dict[str, Any]:
+    """指标口径的知识依据字段；知识不可用时返回空串/None 兜底。"""
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        info = knowledge_service.metric_basis(code)
+        if not isinstance(info, dict):
+            info = dict(info) if info else {}
+        return {
+            "basis": info.get("basis") or "",
+            "source_ref": info.get("source_ref"),
+            "source_name": info.get("source_name"),
+            "source_url": info.get("source_url"),
+            "knowledge_version": info.get("version") or None,
+        }
+    except Exception:  # noqa: BLE001 - 知识不可用不得影响指标读取
+        return {
+            "basis": "",
+            "source_ref": None,
+            "source_name": None,
+            "source_url": None,
+            "knowledge_version": None,
+        }
+
+
 def _definition(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "code": row["code"],
@@ -92,6 +117,7 @@ def _definition(row: sqlite3.Row) -> dict[str, Any]:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
         "updated_by": row["updated_by"],
+        **_knowledge_basis_fields(row["code"]),
     }
 
 
@@ -1158,6 +1184,7 @@ def appendix_metrics(codes: list[str]) -> list[dict[str, Any]]:
             "version": row["current_version"],
             "certified_by": row["certified_by"],
             "certified_at": row["certified_at"],
+            **_knowledge_basis_fields(row["code"]),
         }
         for row in rows
     }

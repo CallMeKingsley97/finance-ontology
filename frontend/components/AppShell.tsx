@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  BookOpen,
   Database,
   FileText,
   Gauge,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/metadata", label: "元数据", icon: Table2 },
   { href: "/governance", label: "治理", icon: ShieldCheck },
   { href: "/metrics", label: "指标", icon: Gauge },
+  { href: "/knowledge", label: "知识", icon: BookOpen },
   { href: "/ontology", label: "本体", icon: Network },
   { href: "/query", label: "问数", icon: MessageSquare },
   { href: "/reports", label: "报告", icon: FileText },
@@ -157,9 +159,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="print-area mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="print-area w-full min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 2xl:px-10">{children}</main>
 
-        <footer className="no-print border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400">
+        <footer className="no-print border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-400 sm:px-6 lg:px-8 2xl:px-10">
           企业财务 Ontology Agent MVP · 本地 SQLite · 规则驱动本体与问数 · LLM 可选
         </footer>
       </div>

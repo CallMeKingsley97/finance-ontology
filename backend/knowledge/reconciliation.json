@@ -1,0 +1,107 @@
+{
+  "pack": "reconciliation",
+  "pack_version": "2026.11.1",
+  "domain": "accounting_reconciliation",
+  "entries": [
+    {
+      "id": "recon.trial_balance",
+      "kind": "reconciliation_rule",
+      "domain": "accounting_reconciliation",
+      "title": "试算平衡：凭证借贷发生额合计相等",
+      "statement": "同一期间全部记账凭证的借方发生额合计等于贷方发生额合计。",
+      "basis": "复式记账法（有借必有贷，借贷必相等）",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "left_sql": "SELECT ROUND(COALESCE(SUM(j.debit_amount), 0), 2) AS value FROM fact_journal j JOIN dim_period p ON p.period_id = j.period_id WHERE p.period_code = :start_period",
+        "right_sql": "SELECT ROUND(COALESCE(SUM(j.credit_amount), 0), 2) AS value FROM fact_journal j JOIN dim_period p ON p.period_id = j.period_id WHERE p.period_code = :start_period",
+        "tolerance": 0.01
+      },
+      "links": [
+        {"target_kind": "reconciliation", "target_code": "trial_balance"}
+      ]
+    },
+    {
+      "id": "recon.balance_row_check",
+      "kind": "reconciliation_rule",
+      "domain": "accounting_reconciliation",
+      "title": "余额勾稽：期初余额加本期发生额等于期末余额",
+      "statement": "同一期间每一科目按期初余额加本期增加发生额减本期减少发生额计算的结果，等于其期末余额合计。",
+      "basis": "科目余额表恒等式（按借贷方向）",
+      "source_id": "double-entry",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "practice",
+      "payload": {
+        "left_sql": "SELECT ROUND(COALESCE(SUM(CASE WHEN b.balance_direction = 'debit' THEN b.opening_balance + b.debit_amount - b.credit_amount ELSE b.opening_balance + b.credit_amount - b.debit_amount END), 0), 2) AS value FROM fact_balance b JOIN dim_period p ON p.period_id = b.period_id WHERE p.period_code = :start_period",
+        "right_sql": "SELECT ROUND(COALESCE(SUM(b.closing_balance), 0), 2) AS value FROM fact_balance b JOIN dim_period p ON p.period_id = b.period_id WHERE p.period_code = :start_period",
+        "tolerance": 0.01
+      },
+      "links": [
+        {"target_kind": "reconciliation", "target_code": "balance_row_check"}
+      ]
+    },
+    {
+      "id": "recon.sales_invoice_tax",
+      "kind": "reconciliation_rule",
+      "domain": "accounting_reconciliation",
+      "title": "销售发票勾稽：不含税金额加税额等于价税合计",
+      "statement": "同一期间全部销售发票的不含税金额与税额之和等于其价税合计。",
+      "basis": "《企业会计准则——应用指南》会计科目表收入类与应交税费科目核算关系（仅引用条款号）",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "standard",
+      "payload": {
+        "left_sql": "SELECT ROUND(COALESCE(SUM(i.amount + i.tax_amount), 0), 2) AS value FROM fact_invoice i JOIN dim_period p ON p.period_id = i.period_id WHERE p.period_code = :start_period AND i.invoice_type = 'sales'",
+        "right_sql": "SELECT ROUND(COALESCE(SUM(i.total_amount), 0), 2) AS value FROM fact_invoice i JOIN dim_period p ON p.period_id = i.period_id WHERE p.period_code = :start_period AND i.invoice_type = 'sales'",
+        "tolerance": 0.01
+      },
+      "links": [
+        {"target_kind": "reconciliation", "target_code": "sales_invoice_tax"}
+      ]
+    },
+    {
+      "id": "recon.purchase_invoice_tax",
+      "kind": "reconciliation_rule",
+      "domain": "accounting_reconciliation",
+      "title": "采购发票勾稽：不含税金额加税额等于价税合计",
+      "statement": "同一期间全部采购发票的不含税金额与税额之和等于其价税合计。",
+      "basis": "《企业会计准则——应用指南》会计科目表成本类与应交税费科目核算关系（仅引用条款号）",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "standard",
+      "payload": {
+        "left_sql": "SELECT ROUND(COALESCE(SUM(i.amount + i.tax_amount), 0), 2) AS value FROM fact_invoice i JOIN dim_period p ON p.period_id = i.period_id WHERE p.period_code = :start_period AND i.invoice_type = 'purchase'",
+        "right_sql": "SELECT ROUND(COALESCE(SUM(i.total_amount), 0), 2) AS value FROM fact_invoice i JOIN dim_period p ON p.period_id = i.period_id WHERE p.period_code = :start_period AND i.invoice_type = 'purchase'",
+        "tolerance": 0.01
+      },
+      "links": [
+        {"target_kind": "reconciliation", "target_code": "purchase_invoice_tax"}
+      ]
+    },
+    {
+      "id": "recon.expense_decomposition",
+      "kind": "reconciliation_rule",
+      "domain": "accounting_reconciliation",
+      "title": "费用分类勾稽：明细费用科目合计等于费用类科目合计",
+      "statement": "同一期间销售费用、管理费用、研发费用、财务费用四类明细科目的期末余额合计，等于全部费用类科目的期末余额合计。",
+      "basis": "《企业会计准则——应用指南》会计科目表 6601、6602、6603、6604 与费用类科目集合（仅引用条款号）",
+      "source_id": "cas-account-guide",
+      "version": "1.0.0",
+      "effective_from": "2025-01",
+      "confidence": "standard",
+      "payload": {
+        "left_sql": "SELECT ROUND(COALESCE(SUM(b.closing_balance), 0), 2) AS value FROM fact_balance b JOIN dim_account a ON a.account_id = b.account_id JOIN dim_period p ON p.period_id = b.period_id WHERE p.period_code = :start_period AND a.account_code IN ('6601', '6602', '6603', '6604')",
+        "right_sql": "SELECT ROUND(COALESCE(SUM(b.closing_balance), 0), 2) AS value FROM fact_balance b JOIN dim_account a ON a.account_id = b.account_id JOIN dim_period p ON p.period_id = b.period_id WHERE p.period_code = :start_period AND a.account_type = 'expense'",
+        "tolerance": 0.01
+      },
+      "links": [
+        {"target_kind": "reconciliation", "target_code": "expense_decomposition"}
+      ]
+    }
+  ]
+}

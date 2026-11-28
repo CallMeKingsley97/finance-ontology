@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     staging_max_batch_sources: int = 50
     sync_service_token: str = ""
 
+    # ===== 行业知识包 =====
+    knowledge_database_path: str = ""
+    knowledge_dir: str = ""
+
+    # ===== 外部 auto-ontology 绑定 =====
+    auto_ontology_allowed_hosts: str = ""
+    auto_ontology_max_timeout_seconds: float = 5.0
+    auto_ontology_max_response_bytes: int = 65_536
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
@@ -96,11 +105,36 @@ class Settings(BaseSettings):
         return self.db_path.parent / "staging.db"
 
     @property
+    def knowledge_db_path(self) -> Path:
+        """知识库路径；未显式配置时与业务库同目录，便于测试隔离。"""
+        raw = (self.knowledge_database_path or "").strip()
+        if raw:
+            return Path(raw).expanduser().resolve()
+        return self.db_path.parent / "knowledge.db"
+
+    @property
+    def knowledge_pack_dir(self) -> Path:
+        """知识包 JSON 目录；未显式配置时位于仓库 backend/knowledge。"""
+        raw = (self.knowledge_dir or "").strip()
+        if raw:
+            return Path(raw).expanduser().resolve()
+        return PROJECT_ROOT / "backend" / "knowledge"
+
+    @property
     def allowed_source_hosts(self) -> list[str]:
         """可选的外部数据库主机白名单；为空表示不限制。"""
         return [
             item.strip().lower()
             for item in (self.source_allowed_hosts or "").split(",")
+            if item.strip()
+        ]
+
+    @property
+    def allowed_auto_ontology_hosts(self) -> list[str]:
+        """可选的外部本体服务主机白名单；为空表示不限制。"""
+        return [
+            item.strip().lower()
+            for item in (self.auto_ontology_allowed_hosts or "").split(",")
             if item.strip()
         ]
 

@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 
 import type {
   AuditResponse,
+  AutoOntologyServiceBody,
+  AutoOntologyServiceState,
+  AutoOntologyTestBody,
+  AutoOntologyTestResult,
   CatalogChangesResponse,
   CatalogColumn,
   CatalogColumnUpdateBody,
@@ -16,6 +20,11 @@ import type {
   Envelope,
   ErrorEnvelope,
   Health,
+  KnowledgeEntryDetail,
+  KnowledgeListResponse,
+  KnowledgeReloadResponse,
+  KnowledgeSourcesResponse,
+  KnowledgeSummary,
   MetricAlias,
   MetricAliasBody,
   MetricCreateBody,
@@ -315,6 +324,25 @@ export const certifyTerm = (id: number, body: { certified?: boolean } = { certif
 
 export const relations = () => apiFetch<RelationListResponse>("/api/ontology/relations");
 
+// ===== 外部 auto-ontology 绑定 =====
+export const ontologyService = () =>
+  apiFetch<AutoOntologyServiceState>("/api/ontology/service");
+
+export const saveOntologyService = (body: AutoOntologyServiceBody) =>
+  apiFetch<AutoOntologyServiceState>("/api/ontology/service", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+
+export const clearOntologyService = () =>
+  apiFetch<{ deleted: boolean }>("/api/ontology/service", { method: "DELETE" });
+
+export const testOntologyService = (body: AutoOntologyTestBody = {}) =>
+  apiFetch<AutoOntologyTestResult>("/api/ontology/service/test", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 // ===== 14. 问数 =====
 export const ask = (question: string, limit = 20) =>
   apiFetch<QueryAnswer>("/api/query/ask", {
@@ -530,6 +558,32 @@ export const generateReportPackage = (body: ReportPackageRequestBody) =>
     method: "POST",
     body: JSON.stringify(body),
   });
+
+// ===== 25. 行业知识包 =====
+export const knowledgeSummary = () =>
+  apiFetch<KnowledgeSummary>("/api/knowledge/summary");
+
+export const knowledgeEntries = (
+  params: {
+    q?: string;
+    domain?: string;
+    kind?: string;
+    source_id?: string;
+    page?: number;
+    page_size?: number;
+  } = {},
+) => apiFetch<KnowledgeListResponse>(`/api/knowledge/entries${queryString(params)}`);
+
+export const knowledgeEntry = (entryId: string) =>
+  apiFetch<KnowledgeEntryDetail>(
+    `/api/knowledge/entries/${encodeURIComponent(entryId)}`,
+  );
+
+export const knowledgeSources = () =>
+  apiFetch<KnowledgeSourcesResponse>("/api/knowledge/sources");
+
+export const reloadKnowledge = () =>
+  apiFetch<KnowledgeReloadResponse>("/api/knowledge/reload", { method: "POST" });
 
 /** 错误对象转可展示文案。 */
 export function errorMessage(error: unknown): string {

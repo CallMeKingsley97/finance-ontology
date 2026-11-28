@@ -335,13 +335,12 @@ _ACCOUNT_DEFS = [
     ("6801", "所得税费用", "income_tax", "debit", 1, 300),
 ]
 
-_PARENT_MAP = {
-    "1002": "1001",
-    "1123": "1122",
-    "2203": "2202",
-    "6402": "6401",
-    "6051": "6001",
-}
+# 按《企业会计准则——应用指南》会计科目表，以下 5 组为同级科目，不存在父子关系：
+# 1002 银行存款 / 1001 库存现金；1123 预付账款 / 1122 应收账款；
+# 2203 预收账款 / 2202 应付账款；6402 其他业务成本 / 6401 主营业务成本；
+# 6051 其他业务收入 / 6001 主营业务收入。
+# 原映射会让 dim_account.parent_code 与本体 rel_account_parent 语义失真，故置空。
+_PARENT_MAP: dict[str, str] = {}
 
 _PNL_ACCOUNT_CODES = [
     "6001",
@@ -1019,8 +1018,12 @@ def _seed_dimensions(
            VALUES (?, ?, ?, ?, ?, ?)""",
         _ACCOUNT_DEFS,
     )
-    for child, parent in _PARENT_MAP.items():
-        conn.execute("UPDATE dim_account SET parent_code = ? WHERE account_code = ?", (parent, child))
+    if _PARENT_MAP:
+        for child, parent in _PARENT_MAP.items():
+            conn.execute(
+                "UPDATE dim_account SET parent_code = ? WHERE account_code = ?",
+                (parent, child),
+            )
 
     customers = _make_customers(rng)
     vendors = _make_vendors(rng)

@@ -1,0 +1,78 @@
+{
+  "pack": "sources",
+  "pack_version": "2026.11.1",
+  "sources": [
+    {
+      "source_id": "cas-basic",
+      "name": "《企业会计准则——基本准则》（财政部令第33号）",
+      "type": "standard",
+      "license": "法规公开引用（仅条款号）",
+      "url": "https://www.mof.gov.cn/",
+      "notice": "仅引用条款号与改写，不复制原文",
+      "version": "2006"
+    },
+    {
+      "source_id": "cas-account-guide",
+      "name": "《企业会计准则——应用指南》会计科目表",
+      "type": "standard",
+      "license": "法规公开引用（仅条款号）",
+      "url": "https://www.mof.gov.cn/",
+      "notice": "仅引用条款号与改写，不复制原文",
+      "version": "2006"
+    },
+    {
+      "source_id": "double-entry",
+      "name": "复式记账法行业通识（有借必有贷、借贷必相等）",
+      "type": "practice",
+      "license": "公共领域通识",
+      "url": "https://en.wikipedia.org/wiki/Double-entry_bookkeeping",
+      "notice": "公共领域通识，经改写整理；链接仅作一般参考，不复制页面内容",
+      "version": "1494"
+    },
+    {
+      "source_id": "fibo-loan",
+      "name": "FIBO (EDM Council) LOAN/FND 术语",
+      "type": "opensource",
+      "license": "MIT",
+      "url": "https://spec.edmcouncil.org/fibo/",
+      "notice": "仅登记参考，当前知识包未直接引用（entry_count=0 属预期）；FIBO 术语引用遵循 MIT 许可证，版权归 EDM Council 所有（MIT License, Copyright (c) EDM Council, Inc.）；本文件保留 MIT 许可证与版权声明，仅作改写引用，不复制原始本体文件。",
+      "version": "2024"
+    },
+    {
+      "source_id": "cube",
+      "name": "Cube 指标口径 schema",
+      "type": "opensource",
+      "license": "Apache-2.0",
+      "url": "https://github.com/cube-js/cube",
+      "notice": "Cube 指标口径 schema 引用遵循 Apache-2.0 许可证；保留原项目 Apache-2.0 NOTICE 与版权声明（版权归 Cube 项目贡献者所有），仅改写引用指标与度量建模思想，不复制源代码。",
+      "version": "2024"
+    },
+    {
+      "source_id": "datahub-glossary",
+      "name": "DataHub GlossaryTerm 模型",
+      "type": "opensource",
+      "license": "Apache-2.0",
+      "url": "https://github.com/datahub-project/datahub",
+      "notice": "仅登记参考，当前知识包未直接引用（entry_count=0 属预期）；DataHub GlossaryTerm 模型引用遵循 Apache-2.0 许可证；保留原项目 Apache-2.0 NOTICE 与版权声明（版权归 DataHub 项目贡献者所有），仅改写引用术语模型概念，不复制源代码。",
+      "version": "2024"
+    },
+    {
+      "source_id": "odoo-erpnext-gnucash",
+      "name": "Odoo/ERPNext/GnuCash 凭证与核销模型概念参考",
+      "type": "practice",
+      "license": "概念参考（LGPLv3/GPLv3/GPLv2+，仅借鉴模型思想）",
+      "url": "https://www.odoo.com/documentation",
+      "notice": "仅借鉴 Odoo（LGPLv3）、ERPNext（GPLv3）、GnuCash（GPLv2+）的凭证与核销模型思想，不复制源代码，不改变原项目许可证。",
+      "version": "2024"
+    },
+    {
+      "source_id": "cas-xbrl-ref",
+      "name": "CAS XBRL 通用分类标准（财会〔2015〕6号）",
+      "type": "standard",
+      "license": "法规公开引用（仅条款号）",
+      "url": "https://www.mof.gov.cn/",
+      "notice": "仅登记参考，当前知识包未直接引用（entry_count=0 属预期）；仅引用元素/报表条款号，不复制分类标准文本",
+      "version": "2015"
+    }
+  ]
+}

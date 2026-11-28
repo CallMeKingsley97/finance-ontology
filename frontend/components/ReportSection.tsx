@@ -79,6 +79,8 @@ export default function ReportSection({
               { key: "code", label: "指标编码" },
               { key: "name", label: "指标" },
               { key: "formula", label: "口径" },
+              { key: "basis", label: "依据" },
+              { key: "source_name", label: "来源" },
               {
                 key: "sql",
                 label: "SQL",
@@ -96,6 +98,8 @@ export default function ReportSection({
               code: metric.code,
               name: metric.name,
               formula: metric.formula,
+              basis: metric.basis ?? "",
+              source_name: metric.source_name ?? "",
               sql: metric.sql,
             }))}
             emptyText="暂无指标口径"
@@ -108,6 +112,26 @@ export default function ReportSection({
                 {(section.data?.assumptions ?? appendix?.assumptions ?? []).map((item, index) => (
                   <li key={index}>{item}</li>
                 ))}
+              </ul>
+            </div>
+          ) : null}
+          {(appendix?.knowledge_sources ?? section.data?.knowledge_sources ?? []).length ? (
+            <div>
+              <div className="mb-1 text-xs font-medium text-slate-600">知识来源与许可</div>
+              <ul className="list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-600">
+                {(appendix?.knowledge_sources ?? section.data?.knowledge_sources ?? []).map(
+                  (source) => (
+                    <li key={source.source_id}>
+                      <span className="text-slate-700">{source.name}</span>
+                      {source.license ? <span> · {source.license}</span> : null}
+                      {source.notice ? (
+                        <div className="mt-0.5 text-[10px] leading-relaxed text-slate-500">
+                          {source.notice}
+                        </div>
+                      ) : null}
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           ) : null}

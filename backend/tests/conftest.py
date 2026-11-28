@@ -14,6 +14,13 @@ from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.db.connection import seed_database
 from app.main import app
+from tests.knowledge_support import (  # noqa: F401 - 必须导入以注册知识包夹具
+    broken_pack_client,
+    empty_pack_client,
+    knowledge_env,
+    pack_client,
+    pack_dir,
+)
 from tests.support import headers
 
 
@@ -46,6 +53,10 @@ _ISOLATED_SETTINGS_DEFAULTS: dict[str, object] = {
     "staging_run_retention_days": 180,
     "staging_max_batch_sources": 50,
     "sync_service_token": "",
+    # 外部 auto-ontology 绑定：白名单与探测限制固定，避免读取开发者本机 .env。
+    "auto_ontology_allowed_hosts": "",
+    "auto_ontology_max_timeout_seconds": 5.0,
+    "auto_ontology_max_response_bytes": 65_536,
 }
 
 

@@ -193,6 +193,31 @@ export default function MetricDefinitionPanel({
                 <dd className="inline text-slate-700">{metric.term_code || "未关联"}</dd>
               </div>
               <div>
+                <dt className="inline text-slate-500">准则依据：</dt>
+                <dd className="inline text-slate-700">{metric.basis || "未挂载依据"}</dd>
+              </div>
+              <div>
+                <dt className="inline text-slate-500">来源：</dt>
+                <dd className="inline text-slate-700">
+                  {metric.source_name ? (
+                    metric.source_url ? (
+                      <a
+                        href={metric.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2 hover:text-slate-900"
+                      >
+                        {metric.source_name}
+                      </a>
+                    ) : (
+                      metric.source_name
+                    )
+                  ) : (
+                    "未挂载来源"
+                  )}
+                </dd>
+              </div>
+              <div>
                 <dt className="inline text-slate-500">更新时间：</dt>
                 <dd className="inline text-slate-700">{formatDate(metric.updated_at)}</dd>
               </div>

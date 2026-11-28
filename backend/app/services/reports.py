@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 import time
 from datetime import datetime
 from typing import Any
 
-from app.db.connection import query_all, query_one
+from app.db.connection import BUSINESS_TABLES, query_all, query_one
 from app.schemas.common import AppError
 from app.services.metadata import get_periods
 from app.services.ontology import ONTOLOGY_VERSION, SQL_ATTRIBUTES
-from app.services.query import format_amount, format_pct, format_ratio
+from app.services.query import format_amount, format_pct, format_ratio, guard_sql
 from app.services.security import mask_rows
 
 logger = logging.getLogger("finance_ontology.reports")
@@ -331,8 +332,110 @@ def _budget_rows(period_code: str, limit: int = 20) -> list[dict[str, Any]]:
     )
 
 
+def _scalar(sql: str, params: dict[str, Any], rule_id: str = "") -> float | None:
+    """执行单行单列查询，返回第一个标量值；异常或空值返回 None。
+
+    与问数执行路径对齐：只允许读取 10 张业务表，避免知识规则越权访问
+    本体/审计表。
+    """
+    try:
+        row = query_one(sql, params, allowed_tables=frozenset(BUSINESS_TABLES))
+    except (sqlite3.Error, AppError, TypeError) as exc:
+        logger.warning("knowledge rule scalar failed rule_id=%s error=%s", rule_id or "-", exc)
+        return None
+    if not row:
+        return None
+    value = next(iter(row.values()), None)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _knowledge_reconciliation_checks(period_code: str) -> tuple[list[dict[str, Any]], int, list[str]]:
+    """知识包驱动的勾稽规则；返回 (checks, skipped, warnings)。永不抛异常。
+
+    知识包属于不可信输入：规则 SQL 必须显式关闭敏感列（``allow_sensitive=False``），
+    否则可绕过既有脱敏控制把 PII 聚合结果写入报告。
+    """
+    checks: list[dict[str, Any]] = []
+    skipped = 0
+    warnings: list[str] = []
+    params = {"start_period": period_code, "end_period": period_code}
+    try:
+        from app.services.knowledge import service as knowledge_service
+
+        for rule in knowledge_service.reconciliation_rules():
+            entry_id = str(rule.get("entry_id") or "")
+            title = rule.get("title") or entry_id or ""
+            left_guarded = guard_sql(
+                rule.get("left_sql") or "",
+                allow_sensitive=False,
+                allowed_tables=frozenset(BUSINESS_TABLES),
+            )
+            if not left_guarded.ok:
+                skipped += 1
+                warnings.append(f"知识勾稽规则「{title}」已跳过：{left_guarded.reason}")
+                logger.warning(
+                    "knowledge reconciliation rule skipped entry_id=%s side=left reason=%s",
+                    entry_id or "-",
+                    left_guarded.reason,
+                )
+                continue
+            right_guarded = guard_sql(
+                rule.get("right_sql") or "",
+                allow_sensitive=False,
+                allowed_tables=frozenset(BUSINESS_TABLES),
+            )
+            if not right_guarded.ok:
+                skipped += 1
+                warnings.append(f"知识勾稽规则「{title}」已跳过：{right_guarded.reason}")
+                logger.warning(
+                    "knowledge reconciliation rule skipped entry_id=%s side=right reason=%s",
+                    entry_id or "-",
+                    right_guarded.reason,
+                )
+                continue
+            left = _scalar(left_guarded.sql, params, entry_id)
+            right = _scalar(right_guarded.sql, params, entry_id)
+            if left is None or right is None:
+                skipped += 1
+                warnings.append(f"知识勾稽规则「{title}」已跳过：一侧取数结果为空")
+                logger.warning(
+                    "knowledge reconciliation rule skipped entry_id=%s reason=one side empty "
+                    "left=%s right=%s",
+                    entry_id or "-",
+                    left,
+                    right,
+                )
+                continue
+            try:
+                tolerance = float(rule.get("tolerance") or 0.01)
+            except (TypeError, ValueError):
+                tolerance = 0.01
+            diff = round(abs(left - right), 2)
+            checks.append(
+                {
+                    "name": title,
+                    "left": round(left, 2),
+                    "right": round(right, 2),
+                    "diff": diff,
+                    "passed": diff <= tolerance,
+                    "tolerance": tolerance,
+                    "basis": rule.get("basis", ""),
+                    "source_id": rule.get("source_id", ""),
+                    "source_name": rule.get("source_name", ""),
+                }
+            )
+    except Exception:  # noqa: BLE001 - 知识不可用时勾稽校验必须降级为原 5 条
+        logger.exception("knowledge reconciliation rules unavailable; falling back to 5 built-in checks")
+        # 整层不可用时无法得知规则总数，skipped 保持已统计值，不伪装为 0。
+        warnings.append("知识勾稽规则不可用，已跳过全部知识规则")
+    return checks, skipped, warnings
+
+
 def check_reconciliation(period_code: str) -> dict[str, Any]:
-    """至少 5 条勾稽校验，容差 0.01。"""
+    """至少 5 条勾稽校验，容差 0.01；知识包规则追加在后。"""
     balance = _balance_values(period_code)
     pnl = _pnl_values(period_code)
     checks: list[dict[str, Any]] = []
@@ -375,7 +478,15 @@ def check_reconciliation(period_code: str) -> dict[str, Any]:
         pnl["net_profit"],
         pnl["total_profit"] - pnl["income_tax"],
     )
-    return {"passed": all(item["passed"] for item in checks), "checks": checks}
+    knowledge_checks, skipped, knowledge_warnings = _knowledge_reconciliation_checks(period_code)
+    checks.extend(knowledge_checks)
+    return {
+        "passed": all(item["passed"] for item in checks),
+        "checks": checks,
+        "knowledge_checks": len(knowledge_checks),
+        "skipped": skipped,
+        "knowledge_warnings": knowledge_warnings,
+    }
 
 
 def _appendix(codes: list[str], assumptions: list[str]) -> dict[str, Any]:
@@ -403,20 +514,102 @@ def _appendix(codes: list[str], assumptions: list[str]) -> dict[str, Any]:
             for attr in SQL_ATTRIBUTES
             if attr["code"] in codes
         ]
-    metrics = [
-        {
-            "code": row["code"],
-            "name": row["name"],
-            "formula": row["description"],
-            "sql": row["formula_sql"],
-            "unit": row["unit"],
+    details: dict[str, dict[str, Any]] = {}
+    try:
+        from app.services import metrics
+
+        details = {
+            str(item.get("code")): item
+            for item in metrics.appendix_metrics(codes)
+            if item.get("code")
         }
-        for row in rows
-    ]
+    except Exception:  # noqa: BLE001 - 指标注册表不可用时退回本体 SQL 属性描述
+        details = {}
+    knowledge_service: Any = None
+    try:
+        from app.services.knowledge import service as knowledge_service_module
+
+        knowledge_service = knowledge_service_module
+    except Exception:  # noqa: BLE001 - 知识包缺失时附录只保留静态口径
+        knowledge_service = None
+
+    def _basis_fields(code: str) -> dict[str, Any]:
+        if knowledge_service is None:
+            return {
+                "basis": "",
+                "source_ref": None,
+                "source_name": None,
+                "source_url": None,
+                "knowledge_version": None,
+            }
+        try:
+            found = knowledge_service.metric_basis(code) or {}
+        except Exception:  # noqa: BLE001 - 单条依据失败不影响其它指标
+            found = {}
+        return {
+            "basis": found.get("basis") or "",
+            "source_ref": found.get("source_ref"),
+            "source_name": found.get("source_name"),
+            "source_url": found.get("source_url"),
+            # 与 metrics.appendix_metrics 对齐：此处为知识条目版本（如 1.0.0）。
+            "knowledge_version": found.get("version"),
+        }
+
+    metrics_out = []
+    for row in rows:
+        detail = details.get(row["code"], {})
+        boundary = detail.get("boundary")
+        metrics_out.append(
+            {
+                "code": row["code"],
+                "name": row["name"],
+                "formula": row["description"],
+                "sql": row["formula_sql"],
+                "unit": row["unit"],
+                "definition": detail.get("definition") or row["description"],
+                "formula_text": detail.get("formula_text") or row["description"],
+                "boundary": boundary if isinstance(boundary, dict) else {},
+                **_basis_fields(row["code"]),
+            }
+        )
+
+    knowledge_sources: list[dict[str, Any]] = []
+    knowledge_version: str | None = None
+    if knowledge_service is not None:
+        try:
+            snapshot = knowledge_service.get_snapshot()
+            version = getattr(snapshot, "pack_version", None)
+            knowledge_version = str(version) if version else None
+            raw_sources = getattr(snapshot, "sources", None) or {}
+            # snapshot.sources 以 source_id 为键的映射；也兼容 list 形态
+            source_values = raw_sources.values() if isinstance(raw_sources, dict) else raw_sources
+            for source in source_values:
+                if isinstance(source, dict):
+                    knowledge_sources.append(
+                        {
+                            "source_id": source.get("source_id"),
+                            "name": source.get("name"),
+                            "type": source.get("type"),
+                            "license": source.get("license"),
+                            "notice": source.get("notice"),
+                        }
+                    )
+                else:
+                    knowledge_sources.append(
+                        {
+                            key: getattr(source, key, None)
+                            for key in ("source_id", "name", "type", "license", "notice")
+                        }
+                    )
+        except Exception:  # noqa: BLE001 - 快照异常时知识来源降级为空
+            knowledge_sources = []
+            knowledge_version = None
     return {
-        "metrics": metrics,
+        "metrics": metrics_out,
         "assumptions": assumptions,
         "ontology_version": ONTOLOGY_VERSION,
+        "knowledge_sources": knowledge_sources,
+        "knowledge_version": knowledge_version,
     }
 
 
@@ -924,6 +1117,11 @@ def generate_report(
     if not reconciliation["passed"]:
         failed = [item["name"] for item in reconciliation["checks"] if not item["passed"]]
         warnings.append(f"勾稽校验未通过：{', '.join(failed)}")
+    skipped_knowledge = int(reconciliation.get("skipped", 0) or 0)
+    if skipped_knowledge > 0:
+        # 跳过明细随 reconciliation.knowledge_warnings 返回，报告可直接定位规则，无需翻日志。
+        warnings.append(f"{skipped_knowledge} 条知识勾稽规则已跳过（SQL 校验失败或无法执行）")
+        warnings.extend(str(item) for item in reconciliation.get("knowledge_warnings", []))
 
     if template_code == "financial_position":
         title = f"{_period_label(period_code)}财务状况分析"

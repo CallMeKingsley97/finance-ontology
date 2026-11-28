@@ -122,7 +122,12 @@ def test_report_structure_and_reconciliation(
 
     reconciliation = report["reconciliation"]
     assert reconciliation["passed"] is True
-    assert len(reconciliation["checks"]) == 5
+    # TASK-04 契约同步：5 条硬编码 + 知识包规则（当前 5 条），知识不可用时退化为 5 条。
+    assert len(reconciliation["checks"]) >= 8
+    assert len(reconciliation["checks"]) == 5 + reconciliation["knowledge_checks"]
+    assert reconciliation["knowledge_checks"] >= 3
+    assert reconciliation["skipped"] == 0
+    assert any("试算平衡" in check["name"] for check in reconciliation["checks"])
     assert all(check["passed"] for check in reconciliation["checks"])
     assert all(check["diff"] <= 0.01 for check in reconciliation["checks"])
     assert report["warnings"] == []
